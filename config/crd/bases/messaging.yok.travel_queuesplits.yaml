@@ -53,15 +53,21 @@ spec:
                     weight:
                       description: Weight determines the percentage of traffic directed
                         to this destination.
+                      maximum: 100
+                      minimum: 1
                       type: integer
                   required:
                   - name
                   - weight
                   type: object
+                maxItems: 2
+                minItems: 2
                 type: array
               prefetchCount:
+                default: 0
                 description: PrefetchCount defines the number of messages to prefetch.
                   Defaults to 0.
+                minimum: 0
                 type: integer
               queueName:
                 description: QueueName specifies the name of the primary queue to
@@ -69,6 +75,7 @@ spec:
                 type: string
               replicas:
                 description: Replicas defines the number of replicas for the QueueSplit.
+                minimum: 1
                 type: integer
               secretName:
                 description: SecretName specifies the name of the Kubernetes Secret
@@ -79,13 +86,14 @@ spec:
             - prefetchCount
             - queueName
             - replicas
-            - secretName
             type: object
           status:
             description: QueueSplitStatus defines the observed state of QueueSplit.
             properties:
               conditions:
-                description: Conditions represent the current conditions of the QueueSplit.
+                description: |-
+                  Example status field - You can replace this with actual fields to track the status.
+                  Example: TotalMessagesProcessed int `json:"totalMessagesProcessed"`
                 items:
                   description: "Condition contains details for one aspect of the current
                     state of this API Resource.\n---\nThis struct is intended for
@@ -154,10 +162,6 @@ spec:
                   - type
                   type: object
                 type: array
-              observedReplicas:
-                description: ObservedReplicas indicates the number of replicas currently
-                  observed.
-                type: integer
             type: object
         type: object
     served: true
