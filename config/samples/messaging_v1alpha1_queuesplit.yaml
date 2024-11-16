@@ -1,0 +1,9 @@
+apiVersion: messaging.yok.travel/v1alpha1
+kind: QueueSplit
+metadata:
+  labels:
+    app.kubernetes.io/name: queue-split-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: queuesplit-sample
+spec:
+  # TODO(user): Add fields here

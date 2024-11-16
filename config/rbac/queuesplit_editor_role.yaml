@@ -1,0 +1,27 @@
+# permissions for end users to edit queuesplits.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: queue-split-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: queuesplit-editor-role
+rules:
+- apiGroups:
+  - messaging.yok.travel
+  resources:
+  - queuesplits
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - messaging.yok.travel
+  resources:
+  - queuesplits/status
+  verbs:
+  - get
