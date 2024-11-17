@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -47,9 +48,20 @@ type QueueSplitReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.17.3/pkg/reconcile
 func (r *QueueSplitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	lg := log.FromContext(ctx)
 
-	// TODO(user): your logic here
+	queuesplit := &messagingv1alpha1.QueueSplit{}
+
+	err := r.Get(context.Background(), req.NamespacedName, queuesplit)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			lg.Info("Queuesplit instance not found")
+			return ctrl.Result{}, nil
+		}
+		lg.Error(err, "Fetch queuesplit instance error")
+		return ctrl.Result{}, err
+	}
+	lg.Info("Queuesplit found\n")
 
 	return ctrl.Result{}, nil
 }
