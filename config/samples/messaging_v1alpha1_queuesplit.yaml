@@ -1,9 +1,15 @@
 apiVersion: messaging.yok.travel/v1alpha1
 kind: QueueSplit
 metadata:
-  labels:
-    app.kubernetes.io/name: queue-split-operator
-    app.kubernetes.io/managed-by: kustomize
-  name: queuesplit-sample
+  name: test-queuesplit
+  namespace: default
 spec:
-  # TODO(user): Add fields here
+  replicas: 1
+  secretName: queue-split-secret
+  queueName: test-queue
+  prefetchCount: 10
+  destinations:
+    - name: consumer-a
+      weight: 50
+    - name: consumer-b
+      weight: 50
