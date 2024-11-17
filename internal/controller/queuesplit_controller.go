@@ -19,8 +19,10 @@ package controller
 import (
 	"context"
 
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
@@ -48,7 +50,7 @@ type QueueSplitReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.17.3/pkg/reconcile
 func (r *QueueSplitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	lg := log.FromContext(ctx)
+	lg := log.Log
 
 	queuesplit := &messagingv1alpha1.QueueSplit{}
 
@@ -62,6 +64,14 @@ func (r *QueueSplitReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{}, err
 	}
 	lg.Info("Queuesplit found\n")
+
+	existingRs := &appsv1.ReplicaSet{}
+	err = r.Get(context.Background(), types.NamespacedName{Name: queuesplit.Name, Namespace: queuesplit.Namespace}, existingRs)
+	if err != nil && errors.IsNotFound(err) {
+		lg.Info("ReplicaSet not found\n")
+		return ctrl.Result{}, nil
+	}
+	lg.Info("ReplicaSet found\n")
 
 	return ctrl.Result{}, nil
 }
