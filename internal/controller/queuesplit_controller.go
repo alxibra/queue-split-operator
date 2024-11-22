@@ -55,7 +55,6 @@ func (r *QueueSplitReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	lg := log.Log
 
 	queuesplit := &messagingv1alpha1.QueueSplit{}
-
 	err := r.Get(context.Background(), req.NamespacedName, queuesplit)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -66,9 +65,17 @@ func (r *QueueSplitReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{}, err
 	}
 	lg.Info("Queuesplit found\n")
-
+	if queuesplit.ObjectMeta.DeletionTimestamp.IsZero() {
+		lg.Info("To Be Delete\n")
+	}
 	existingRs := &appsv1.ReplicaSet{}
-	err = r.Get(context.Background(), types.NamespacedName{Name: queuesplit.Name, Namespace: queuesplit.Namespace}, existingRs)
+	err = r.Get(
+		context.Background(),
+		types.NamespacedName{
+			Name:      queuesplit.Name,
+			Namespace: queuesplit.Namespace,
+		},
+		existingRs)
 	if err != nil && errors.IsNotFound(err) {
 		lg.Info("ReplicaSet not found\n")
 		rs := buildReplicaSet()
@@ -79,6 +86,10 @@ func (r *QueueSplitReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{}, nil
 	}
 	lg.Info("ReplicaSet found\n")
+
+	if !existingRs.ObjectMeta.DeletionTimestamp.IsZero() {
+		lg.Info("Resource is being deleted", "name", existingRs.Name)
+	}
 
 	return ctrl.Result{}, nil
 }
