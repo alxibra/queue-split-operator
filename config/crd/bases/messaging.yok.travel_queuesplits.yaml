@@ -11,9 +11,9 @@ spec:
     kind: QueueSplit
     listKind: QueueSplitList
     plural: queuesplits
-    singular: queuesplit
     shortNames:
-      - qs
+    - qs
+    singular: queuesplit
   scope: Namespaced
   versions:
   - name: v1alpha1

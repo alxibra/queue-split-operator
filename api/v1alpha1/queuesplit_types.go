@@ -70,6 +70,10 @@ type QueueSplitStatus struct {
 
 // QueueSplit is the Schema for the queuesplits API.
 // +kubebuilder:resource:shortName=qs
+// +kubebuilder:metadata:labels:app.kubernetes.io/name="queuesplit"
+// +kubebuilder:metadata:labels:app.kubernetes.io/part-of="messaging-system"
+// +kubebuilder:metadata:labels:app.kubernetes.io/managed-by="queuesplit-operator"
+// +kubebuilder:metadata:labels:app.kubernetes.io/version="v1alpha1"
 type QueueSplit struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
