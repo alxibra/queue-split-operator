@@ -27,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	messagingv1alpha1 "github.com/alxibra/queue-split-operator/api/v1alpha1"
@@ -65,9 +66,6 @@ func (r *QueueSplitReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{}, err
 	}
 	lg.Info("Queuesplit found\n")
-	if queuesplit.ObjectMeta.DeletionTimestamp.IsZero() {
-		lg.Info("To Be Delete\n")
-	}
 	existingRs := &appsv1.ReplicaSet{}
 	err = r.Get(
 		context.Background(),
@@ -78,30 +76,58 @@ func (r *QueueSplitReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		existingRs)
 	if err != nil && errors.IsNotFound(err) {
 		lg.Info("ReplicaSet not found\n")
-		rs := buildReplicaSet()
+		rs := buildReplicaSet(queuesplit.Name, queuesplit.Namespace)
+		if err := controllerutil.SetControllerReference(queuesplit, rs, r.Scheme); err != nil {
+			return ctrl.Result{}, err
+		}
 		err = r.Create(context.Background(), rs)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{}, nil
 	}
-	lg.Info("ReplicaSet found\n")
-
-	if !existingRs.ObjectMeta.DeletionTimestamp.IsZero() {
-		lg.Info("Resource is being deleted", "name", existingRs.Name)
-	}
-
 	return ctrl.Result{}, nil
 }
 
-func buildReplicaSet() *appsv1.ReplicaSet {
+// cleanupResources cleans up resources related to the QueueSplit instance
+func (r *QueueSplitReconciler) cleanupResources(ctx context.Context, queuesplit *messagingv1alpha1.QueueSplit) error {
+	lg := log.Log
+	lg.Info("Cleaning up resources for QueueSplit", "name", queuesplit.Name)
+
+	// Example: Delete the associated ReplicaSet
+	existingRs := &appsv1.ReplicaSet{}
+	err := r.Get(ctx, types.NamespacedName{
+		Name:      queuesplit.Name,
+		Namespace: queuesplit.Namespace,
+	}, existingRs)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			lg.Info("ReplicaSet already deleted", "name", queuesplit.Name)
+			return nil
+		}
+		return err
+	}
+
+	if err := r.Delete(ctx, existingRs); err != nil {
+		lg.Error(err, "Failed to delete ReplicaSet", "name", queuesplit.Name)
+		return err
+	}
+
+	lg.Info("ReplicaSet deleted successfully", "name", queuesplit.Name)
+
+	// Additional cleanup logic for other related resources can be added here
+
+	return nil
+}
+
+func buildReplicaSet(name, namespace string) *appsv1.ReplicaSet {
 	rs := &appsv1.ReplicaSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test",
-			Namespace: "default",
+			Name:      name,
+			Namespace: namespace,
 		},
 		Spec: appsv1.ReplicaSetSpec{
-			Replicas: int32Ptr(3), // Desired number of replicas
+			Replicas: int32Ptr(1), // Desired number of replicas
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"app": "test-app",
