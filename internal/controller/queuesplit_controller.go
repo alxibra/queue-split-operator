@@ -120,24 +120,43 @@ func (r *QueueSplitReconciler) cleanupResources(ctx context.Context, queuesplit 
 	return nil
 }
 
+func labels(name string) map[string]string {
+	return map[string]string{
+		"app.kubernetes.io/name":       name,                    // Name of the application
+		"app.kubernetes.io/instance":   name,                    // Unique instance of the application
+		"app.kubernetes.io/managed-by": "queuesplit-controller", // Manager of the resource
+		"app.kubernetes.io/part-of":    "messaging-system",      // Higher-level application
+		"app":                          name,                    // Compatibility label
+	}
+}
+
+func annotations(name, namespace, version, revision string) map[string]string {
+	return map[string]string{
+		"app.kubernetes.io/managed-by":    "queuesplit-controller", // Manager of the resource
+		"queuesplit.yok.travel/name":      name,                    // Name of the parent QueueSplit resource
+		"queuesplit.yok.travel/namespace": namespace,               // Namespace of the parent QueueSplit resource
+	}
+}
+
 func buildReplicaSet(name, namespace string) *appsv1.ReplicaSet {
 	rs := &appsv1.ReplicaSet{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: namespace,
+			Name:        name,
+			Namespace:   namespace,
+			Labels:      labels(name),                                  // Call the labels function
+			Annotations: annotations(name, namespace, "alpha1.0", "0"), // Call the annotations function
 		},
 		Spec: appsv1.ReplicaSetSpec{
 			Replicas: int32Ptr(1), // Desired number of replicas
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					"app": "test-app",
+					"app.kubernetes.io/name": name, // Ensure match labels align with labels
 				},
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						"app": "test-app",
-					},
+					Labels:      labels(name),                                  // Apply same labels to the Pod template
+					Annotations: annotations(name, namespace, "alpha1.0", "0"), // Apply same annotations to the Pod template
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
