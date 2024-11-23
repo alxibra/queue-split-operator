@@ -16,7 +16,20 @@ spec:
     singular: queuesplit
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - description: The number of replicas
+      jsonPath: .spec.replicas
+      name: Replicas
+      type: integer
+    - description: Prefetch count for the QueueSplit
+      jsonPath: .spec.prefetchCount
+      name: PrefetchCount
+      type: integer
+    - description: Time since creation
+      jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: QueueSplit is the Schema for the queuesplits API.

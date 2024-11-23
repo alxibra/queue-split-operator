@@ -74,6 +74,9 @@ type QueueSplitStatus struct {
 // +kubebuilder:metadata:labels:app.kubernetes.io/part-of="messaging-system"
 // +kubebuilder:metadata:labels:app.kubernetes.io/managed-by="queuesplit-operator"
 // +kubebuilder:metadata:labels:app.kubernetes.io/version="v1alpha1"
+// +kubebuilder:printcolumn:name="Replicas",type="integer",description="The number of replicas",JSONPath=".spec.replicas"
+// +kubebuilder:printcolumn:name="PrefetchCount",type="integer",description="Prefetch count for the QueueSplit",JSONPath=".spec.prefetchCount"
+// +kubebuilder:printcolumn:name="Age",type="date",description="Time since creation",JSONPath=".metadata.creationTimestamp"
 type QueueSplit struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
