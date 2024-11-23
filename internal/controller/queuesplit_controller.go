@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"reflect"
 	"strconv"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -54,10 +55,10 @@ type QueueSplitReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.17.3/pkg/reconcile
 func (r *QueueSplitReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	lg := log.Log
+	lg := log.FromContext(ctx)
 
 	queuesplit := &messagingv1alpha1.QueueSplit{}
-	err := r.Get(context.Background(), req.NamespacedName, queuesplit)
+	err := r.Get(ctx, req.NamespacedName, queuesplit)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			lg.Info("Queuesplit instance not found")
@@ -69,7 +70,7 @@ func (r *QueueSplitReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	lg.Info("Queuesplit found\n")
 	existingRs := &appsv1.ReplicaSet{}
 	err = r.Get(
-		context.Background(),
+		ctx,
 		types.NamespacedName{
 			Name:      queuesplit.Name,
 			Namespace: queuesplit.Namespace,
@@ -81,44 +82,29 @@ func (r *QueueSplitReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		if err := controllerutil.SetControllerReference(queuesplit, rs, r.Scheme); err != nil {
 			return ctrl.Result{}, err
 		}
-		err = r.Create(context.Background(), rs)
+		err = r.Create(ctx, rs)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{}, nil
 	}
-	return ctrl.Result{}, nil
-}
 
-// cleanupResources cleans up resources related to the QueueSplit instance
-func (r *QueueSplitReconciler) cleanupResources(ctx context.Context, queuesplit *messagingv1alpha1.QueueSplit) error {
-	lg := log.Log
-	lg.Info("Cleaning up resources for QueueSplit", "name", queuesplit.Name)
+	dcRs := existingRs.DeepCopy()
+	dcRs.Spec.Replicas = int32Ptr(int32(queuesplit.Spec.Replicas))
+	dcRs.Spec.Template.Spec.Containers[0].Env = buildEnvVars(queuesplit)
 
-	// Example: Delete the associated ReplicaSet
-	existingRs := &appsv1.ReplicaSet{}
-	err := r.Get(ctx, types.NamespacedName{
-		Name:      queuesplit.Name,
-		Namespace: queuesplit.Namespace,
-	}, existingRs)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			lg.Info("ReplicaSet already deleted", "name", queuesplit.Name)
-			return nil
+	if !reflect.DeepEqual(existingRs.Spec, dcRs.Spec) || !reflect.DeepEqual(existingRs.Annotations, dcRs.Annotations) {
+		lg.Info("Updating ReplicaSet")
+		err = r.Update(ctx, dcRs)
+		if err != nil {
+			lg.Error(err, "Failed to update ReplicaSet")
+			return ctrl.Result{}, err
 		}
-		return err
+		lg.Info("ReplicaSet updated successfully")
+	} else {
+		lg.Info("ReplicaSet is already up-to-date")
 	}
-
-	if err := r.Delete(ctx, existingRs); err != nil {
-		lg.Error(err, "Failed to delete ReplicaSet", "name", queuesplit.Name)
-		return err
-	}
-
-	lg.Info("ReplicaSet deleted successfully", "name", queuesplit.Name)
-
-	// Additional cleanup logic for other related resources can be added here
-
-	return nil
+	return ctrl.Result{}, nil
 }
 
 func labels(name string) map[string]string {
@@ -136,6 +122,46 @@ func annotations(name, namespace, version, revision string) map[string]string {
 		"app.kubernetes.io/managed-by":    "queuesplit-controller",
 		"queuesplit.yok.travel/name":      name,
 		"queuesplit.yok.travel/namespace": namespace,
+	}
+}
+
+func buildEnvVars(qs *messagingv1alpha1.QueueSplit) []corev1.EnvVar {
+	return []corev1.EnvVar{
+		{
+			Name:  "GATEWAY_Q",
+			Value: qs.Spec.QueueName,
+		},
+		{
+			Name:  "SPLIT_Q_0",
+			Value: qs.Spec.Destinations[0].Name,
+		},
+		{
+			Name:  "SPLIT_Q_WEIGHT_0",
+			Value: strconv.Itoa(qs.Spec.Destinations[0].Weight),
+		},
+		{
+			Name:  "SPLIT_Q_1",
+			Value: qs.Spec.Destinations[1].Name,
+		},
+		{
+			Name:  "SPLIT_Q_WEIGHT_1",
+			Value: strconv.Itoa(qs.Spec.Destinations[1].Weight),
+		},
+		{
+			Name:  "PREFETCH_COUNT",
+			Value: strconv.Itoa(qs.Spec.PrefetchCount),
+		},
+		{
+			Name: "QUEUE_HOST",
+			ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: qs.Spec.SecretName,
+					},
+					Key: "queue-host",
+				},
+			},
+		},
 	}
 }
 
