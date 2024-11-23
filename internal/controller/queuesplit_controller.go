@@ -68,6 +68,7 @@ func (r *QueueSplitReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{}, err
 	}
 	lg.Info("Queuesplit found\n")
+
 	existingRs := &appsv1.ReplicaSet{}
 	err = r.Get(
 		ctx,
@@ -80,13 +81,20 @@ func (r *QueueSplitReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		lg.Info("ReplicaSet not found\n")
 		rs := buildReplicaSet(*queuesplit)
 		if err := controllerutil.SetControllerReference(queuesplit, rs, r.Scheme); err != nil {
+			lg.Error(err, "Failed to SetControllerReference")
 			return ctrl.Result{}, err
 		}
 		err = r.Create(ctx, rs)
 		if err != nil {
+			lg.Error(err, "Failed to create ReplicaSet")
 			return ctrl.Result{}, err
 		}
-		return ctrl.Result{}, nil
+		// Requeue to verify creation
+		return ctrl.Result{Requeue: true}, nil
+	}
+	if err != nil {
+		lg.Error(err, "Failed to get ReplicaSet")
+		return ctrl.Result{}, err
 	}
 
 	dcRs := existingRs.DeepCopy()
@@ -101,9 +109,9 @@ func (r *QueueSplitReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			return ctrl.Result{}, err
 		}
 		lg.Info("ReplicaSet updated successfully")
-	} else {
-		lg.Info("ReplicaSet is already up-to-date")
+		return ctrl.Result{}, nil
 	}
+	lg.Info("ReplicaSet is already up-to-date")
 	return ctrl.Result{}, nil
 }
 
