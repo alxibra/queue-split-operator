@@ -1,15 +1,15 @@
 apiVersion: messaging.yok.travel/v1alpha1
 kind: QueueSplit
 metadata:
-  name: test-queuesplit
+  name: queuesplit-webhook-order
   namespace: default
 spec:
-  replicas: 1
+  replicas: 2
   secretName: queue-split-secret
   queueName: test-queue
   prefetchCount: 10
   destinations:
     - name: consumer-a
-      weight: 50
+      weight: 80
     - name: consumer-b
-      weight: 50
+      weight: 20

@@ -27,6 +27,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -38,7 +39,8 @@ import (
 // QueueSplitReconciler reconciles a QueueSplit object
 type QueueSplitReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme   *runtime.Scheme
+	Recorder record.EventRecorder
 }
 
 //+kubebuilder:rbac:groups=messaging.yok.travel,resources=queuesplits,verbs=get;list;watch;create;update;patch;delete
@@ -81,14 +83,17 @@ func (r *QueueSplitReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		lg.Info("ReplicaSet not found\n")
 		rs := buildReplicaSet(*queuesplit)
 		if err := controllerutil.SetControllerReference(queuesplit, rs, r.Scheme); err != nil {
+			r.Recorder.Event(queuesplit, corev1.EventTypeWarning, "OwnerReferenceFailed", "Failed to set owner reference for ReplicaSet")
 			lg.Error(err, "Failed to SetControllerReference")
 			return ctrl.Result{}, err
 		}
 		err = r.Create(ctx, rs)
 		if err != nil {
+			r.Recorder.Event(queuesplit, corev1.EventTypeWarning, "ReplicaSetCreationFailed", "Failed to create ReplicaSet")
 			lg.Error(err, "Failed to create ReplicaSet")
 			return ctrl.Result{}, err
 		}
+		r.Recorder.Event(queuesplit, corev1.EventTypeNormal, "ReplicaSetCreated", "Successfully created ReplicaSet")
 		// Requeue to verify creation
 		return ctrl.Result{Requeue: true}, nil
 	}
@@ -105,10 +110,12 @@ func (r *QueueSplitReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		lg.Info("Updating ReplicaSet")
 		err = r.Update(ctx, dcRs)
 		if err != nil {
+			r.Recorder.Event(queuesplit, corev1.EventTypeWarning, "ReplicaSetUpdateFailed", "Failed to update ReplicaSet for QueueSplit")
 			lg.Error(err, "Failed to update ReplicaSet")
 			return ctrl.Result{}, err
 		}
 		lg.Info("ReplicaSet updated successfully")
+		r.Recorder.Event(queuesplit, corev1.EventTypeNormal, "ReplicaSetUpdated", "ReplicaSet updated successfully")
 		return ctrl.Result{}, nil
 	}
 	lg.Info("ReplicaSet is already up-to-date")
