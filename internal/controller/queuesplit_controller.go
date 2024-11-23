@@ -123,19 +123,19 @@ func (r *QueueSplitReconciler) cleanupResources(ctx context.Context, queuesplit 
 
 func labels(name string) map[string]string {
 	return map[string]string{
-		"app.kubernetes.io/name":       name,                    // Name of the application
-		"app.kubernetes.io/instance":   name,                    // Unique instance of the application
-		"app.kubernetes.io/managed-by": "queuesplit-controller", // Manager of the resource
-		"app.kubernetes.io/part-of":    "messaging-system",      // Higher-level application
-		"app":                          name,                    // Compatibility label
+		"app.kubernetes.io/name":       name,
+		"app.kubernetes.io/instance":   name,
+		"app.kubernetes.io/managed-by": "queuesplit-controller",
+		"app.kubernetes.io/part-of":    "messaging-system",
+		"app":                          name,
 	}
 }
 
 func annotations(name, namespace, version, revision string) map[string]string {
 	return map[string]string{
-		"app.kubernetes.io/managed-by":    "queuesplit-controller", // Manager of the resource
-		"queuesplit.yok.travel/name":      name,                    // Name of the parent QueueSplit resource
-		"queuesplit.yok.travel/namespace": namespace,               // Namespace of the parent QueueSplit resource
+		"app.kubernetes.io/managed-by":    "queuesplit-controller",
+		"queuesplit.yok.travel/name":      name,
+		"queuesplit.yok.travel/namespace": namespace,
 	}
 }
 
@@ -157,8 +157,8 @@ func buildReplicaSet(qs messagingv1alpha1.QueueSplit) *appsv1.ReplicaSet {
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels:      labels(name),                                  // Apply same labels to the Pod template
-					Annotations: annotations(name, namespace, "alpha1.0", "0"), // Apply same annotations to the Pod template
+					Labels:      labels(name),
+					Annotations: annotations(name, namespace, "alpha1.0", "0"),
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{
@@ -196,6 +196,17 @@ func buildReplicaSet(qs messagingv1alpha1.QueueSplit) *appsv1.ReplicaSet {
 								{
 									Name:  "PREFETCH_COUNT",
 									Value: strconv.Itoa(qs.Spec.PrefetchCount),
+								},
+								{
+									Name: "QUEUE_HOST", // Key from the dynamically specified secret
+									ValueFrom: &corev1.EnvVarSource{
+										SecretKeyRef: &corev1.SecretKeySelector{
+											LocalObjectReference: corev1.LocalObjectReference{
+												Name: qs.Spec.SecretName, // Use the secretName from the QueueSplit spec
+											},
+											Key: "queue-host", // The specific key in the secret
+										},
+									},
 								},
 							},
 						},
