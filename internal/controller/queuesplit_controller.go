@@ -76,7 +76,7 @@ func (r *QueueSplitReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		existingRs)
 	if err != nil && errors.IsNotFound(err) {
 		lg.Info("ReplicaSet not found\n")
-		rs := buildReplicaSet(queuesplit.Name, queuesplit.Namespace)
+		rs := buildReplicaSet(*queuesplit)
 		if err := controllerutil.SetControllerReference(queuesplit, rs, r.Scheme); err != nil {
 			return ctrl.Result{}, err
 		}
@@ -138,7 +138,8 @@ func annotations(name, namespace, version, revision string) map[string]string {
 	}
 }
 
-func buildReplicaSet(name, namespace string) *appsv1.ReplicaSet {
+func buildReplicaSet(qs messagingv1alpha1.QueueSplit) *appsv1.ReplicaSet {
+	name, namespace := qs.Name, qs.Namespace
 	rs := &appsv1.ReplicaSet{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        name,
