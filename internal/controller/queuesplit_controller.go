@@ -148,7 +148,7 @@ func buildReplicaSet(qs messagingv1alpha1.QueueSplit) *appsv1.ReplicaSet {
 			Annotations: annotations(name, namespace, "alpha1.0", "0"), // Call the annotations function
 		},
 		Spec: appsv1.ReplicaSetSpec{
-			Replicas: int32Ptr(1), // Desired number of replicas
+			Replicas: int32Ptr(int32(qs.Spec.Replicas)), // Desired number of replicas
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"app.kubernetes.io/name": name, // Ensure match labels align with labels
