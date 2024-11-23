@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"strconv"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -144,14 +145,14 @@ func buildReplicaSet(qs messagingv1alpha1.QueueSplit) *appsv1.ReplicaSet {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        name,
 			Namespace:   namespace,
-			Labels:      labels(name),                                  // Call the labels function
-			Annotations: annotations(name, namespace, "alpha1.0", "0"), // Call the annotations function
+			Labels:      labels(name),
+			Annotations: annotations(name, namespace, "alpha1.0", "0"),
 		},
 		Spec: appsv1.ReplicaSetSpec{
-			Replicas: int32Ptr(int32(qs.Spec.Replicas)), // Desired number of replicas
+			Replicas: int32Ptr(int32(qs.Spec.Replicas)),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					"app.kubernetes.io/name": name, // Ensure match labels align with labels
+					"app.kubernetes.io/name": name,
 				},
 			},
 			Template: corev1.PodTemplateSpec{
@@ -169,6 +170,32 @@ func buildReplicaSet(qs messagingv1alpha1.QueueSplit) *appsv1.ReplicaSet {
 									Name:          "http",
 									Protocol:      corev1.ProtocolTCP,
 									ContainerPort: 80,
+								},
+							},
+							Env: []corev1.EnvVar{
+								{
+									Name:  "GATEWAY_Q",
+									Value: qs.Spec.QueueName,
+								},
+								{
+									Name:  "SPLIT_Q_0",
+									Value: qs.Spec.Destinations[0].Name,
+								},
+								{
+									Name:  "SPLIT_Q_WEIGHT_0",
+									Value: strconv.Itoa(qs.Spec.Destinations[0].Weight),
+								},
+								{
+									Name:  "SPLIT_Q_1",
+									Value: qs.Spec.Destinations[1].Name,
+								},
+								{
+									Name:  "SPLIT_Q_WEIGHT_1",
+									Value: strconv.Itoa(qs.Spec.Destinations[1].Weight),
+								},
+								{
+									Name:  "PREFETCH_COUNT",
+									Value: strconv.Itoa(qs.Spec.PrefetchCount),
 								},
 							},
 						},
